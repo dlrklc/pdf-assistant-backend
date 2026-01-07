@@ -1,12 +1,13 @@
-import express from 'express';
+import express, { RequestHandler } from 'express';
 import multer from 'multer';
 import fs from 'fs';
 import { processAndEmbedDocument } from '../services/embedder';
+import { authenticate } from '../middlewares/authenticate';
 
 const upload = multer({ dest: 'uploads/' });
 const router = express.Router();
 
-router.post('/', upload.single('file'), async (req, res) => {
+router.post('/', authenticate as RequestHandler, upload.single('file'), async (req, res) => {
   const file = req.file;
 
   if (!file) {

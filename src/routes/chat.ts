@@ -1,13 +1,15 @@
-import express from 'express';
+import '../env';
+
+import express, { RequestHandler } from 'express';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import { pineconeIndex } from '../services/pinecone';
 
-import 'dotenv/config';
+import { authenticate } from "../middlewares/authenticate";
 
 const router = express.Router();
 
-router.post('/', async (req, res) => {
+router.post('/', authenticate as RequestHandler, async (req, res) => {
   const { message } = req.body;
 
   if (!message) {

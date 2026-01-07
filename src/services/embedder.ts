@@ -1,6 +1,7 @@
+import '../env';
+
 import fs from 'fs';
-import pdfParse from 'pdf-parse';
-import 'dotenv/config';
+
 import { pineconeIndex } from './pinecone';
 import { v4 as uuidv4 } from 'uuid';
 import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
@@ -16,6 +17,8 @@ export async function processAndEmbedDocument(filePath: string) {
 
   let rawText: string;
 
+  // Lazy import
+  const pdfParse = (await import('pdf-parse')).default;
   const pdf = await pdfParse(dataBuffer);
   rawText = pdf.text;
 
