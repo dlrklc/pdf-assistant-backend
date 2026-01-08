@@ -3,7 +3,7 @@ import {
   validatePassword,
   getUserWithoutPassword,
 } from './user.service';
-import { generateToken, TokenPayload } from './token.service';
+import { generateToken, verifyToken, TokenPayload } from './token.service';
 
 export interface LoginCredentials {
   email?: string;
@@ -18,7 +18,8 @@ export interface LoginResult {
     email: string;
     role: string;
   };
-  token: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
 export class AuthenticationError extends Error {
@@ -81,14 +82,68 @@ export async function login(
     role: user.role,
   };
 
-  // Generate token using token service
-  const token = generateToken(payload);
+  // Generate tokens using token service
+  // Access token uses ACCESS_TOKEN_SECRET, refresh token uses REFRESH_TOKEN_SECRET
+  const accessToken = generateToken(payload, { expiresIn: '30m' });
+  const refreshToken = generateToken(payload, { expiresIn: '7d', useRefreshSecret: true });
 
   // Return user data (without password) and token
   const userResponse = getUserWithoutPassword(user);
 
   return {
     user: userResponse,
-    token,
+    accessToken,
+    refreshToken,
   };
+}
+
+export interface RefreshResult {
+  accessToken: string;
+  refreshToken: string;
+}
+
+/**
+ * Refreshes an access token using a refresh token
+ * Uses token rotation strategy: generates a new refresh token to invalidate the old one
+ * This prevents token reuse if a refresh token is stolen
+ * 
+ * @param refreshToken - The refresh token to validate
+ * @returns New access token and refresh token (token rotation)
+ * @throws {AuthenticationError} If refresh token is invalid or expired
+ */
+export async function refresh(refreshToken: string): Promise<RefreshResult> {
+  if (!refreshToken) {
+    throw new ValidationError('Refresh token is required');
+  }
+
+  try {
+    // Verify the refresh token using REFRESH_TOKEN_SECRET
+    const refreshSecret = process.env.REFRESH_TOKEN_SECRET;
+    if (!refreshSecret) {
+      throw new Error('Server configuration error: REFRESH_TOKEN_SECRET is not set');
+    }
+    const payload = verifyToken(refreshToken, refreshSecret);
+
+    // Generate new tokens (token rotation: new refresh token invalidates the old one)
+    const tokenPayload: TokenPayload = {
+      userId: payload.userId,
+      username: payload.username,
+      email: payload.email,
+      role: payload.role,
+    };
+
+    // Generate new access token (short-lived)
+    const newAccessToken = generateToken(tokenPayload, { expiresIn: '30m' });
+    
+    // Generate new refresh token (token rotation for security)
+    // The old refresh token is now invalid, preventing reuse if it was stolen
+    const newRefreshToken = generateToken(tokenPayload, { expiresIn: '7d', useRefreshSecret: true });
+
+    return {
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    };
+  } catch (error) {
+    throw new AuthenticationError('Invalid or expired refresh token');
+  }
 }

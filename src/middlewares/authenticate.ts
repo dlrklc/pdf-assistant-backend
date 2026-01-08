@@ -17,7 +17,7 @@ export const authenticate = (req: Request & { user: { userId: string, role: stri
   const token = authHeader.split(" ")[1];
 
   try {
-    // Verify token using token service
+    // Verify access token using token service (uses ACCESS_TOKEN_SECRET by default)
     const payload = verifyToken(token);
 
     // Attach user to request context

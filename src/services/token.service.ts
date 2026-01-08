@@ -11,16 +11,29 @@ export interface TokenPayload {
 
 export interface TokenConfig {
   expiresIn?: string;
+  useRefreshSecret?: boolean; // If true, use REFRESH_TOKEN_SECRET instead of ACCESS_TOKEN_SECRET
 }
 
 /**
- * Gets the JWT secret from environment variables
+ * Gets the JWT secret for access tokens from environment variables
  * @throws {Error} If ACCESS_TOKEN_SECRET is not set
  */
-function getJwtSecret(): string {
+function getAccessTokenSecret(): string {
   const secret = process.env.ACCESS_TOKEN_SECRET;
   if (!secret) {
     throw new Error('Server configuration error: ACCESS_TOKEN_SECRET is not set');
+  }
+  return secret;
+}
+
+/**
+ * Gets the JWT secret for refresh tokens from environment variables
+ * @throws {Error} If REFRESH_TOKEN_SECRET is not set
+ */
+function getRefreshTokenSecret(): string {
+  const secret = process.env.REFRESH_TOKEN_SECRET;
+  if (!secret) {
+    throw new Error('Server configuration error: REFRESH_TOKEN_SECRET is not set');
   }
   return secret;
 }
@@ -35,15 +48,15 @@ function getDefaultExpiration(): string {
 /**
  * Generates a JWT token with the provided payload
  * @param payload - The data to encode in the token
- * @param config - Optional token configuration (expiration, etc.)
+ * @param config - Optional token configuration (expiration, useRefreshSecret, etc.)
  * @returns The signed JWT token
- * @throws {Error} If ACCESS_TOKEN_SECRET is not set
+ * @throws {Error} If required secret is not set
  */
 export function generateToken(
   payload: TokenPayload,
   config?: TokenConfig
 ): string {
-  const secret = getJwtSecret();
+  const secret = config?.useRefreshSecret ? getRefreshTokenSecret() : getAccessTokenSecret();
   const expiresIn = config?.expiresIn || getDefaultExpiration();
 
   return jwt.sign(payload, secret, {
@@ -54,14 +67,15 @@ export function generateToken(
 /**
  * Verifies and decodes a JWT token
  * @param token - The JWT token to verify
+ * @param secret - Optional secret to use. If not provided, uses ACCESS_TOKEN_SECRET
  * @returns The decoded token payload
  * @throws {jwt.JsonWebTokenError} If token is invalid
  * @throws {jwt.TokenExpiredError} If token has expired
- * @throws {Error} If ACCESS_TOKEN_SECRET is not set
+ * @throws {Error} If required secret is not set
  */
-export function verifyToken(token: string): TokenPayload {
-  const secret = getJwtSecret();
-  const payload = jwt.verify(token, secret);
+export function verifyToken(token: string, secret?: string): TokenPayload {
+  const tokenSecret = secret || getAccessTokenSecret();
+  const payload = jwt.verify(token, tokenSecret);
 
   // Type guard: ensure payload is an object, not a string
   if (typeof payload === 'string' || !payload) {
