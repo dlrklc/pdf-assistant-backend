@@ -1,18 +1,10 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import chatRouter from './routes/chat';
-import uploadRouter from './routes/upload';
-import cors from 'cors';
+// src/index.ts
+import './env';
 
-dotenv.config();
-const app = express();
-app.use(express.json());
-app.use(cors());
+import app from './app';
 
-app.use('/api/chat', chatRouter);
-app.use('/api/upload', uploadRouter);
+const PORT = Number(process.env.PORT) || 5000;
 
-const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
