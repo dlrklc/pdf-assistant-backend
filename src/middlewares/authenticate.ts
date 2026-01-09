@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from 'jsonwebtoken';
 import { verifyToken } from '../services/token.service';
+import { isTokenBlacklisted } from '../services/token-blacklist.service';
 
 export const authenticate = (req: Request & { user: { userId: string, role: string, email: string, username: string } },
   res: Response,
@@ -15,6 +16,11 @@ export const authenticate = (req: Request & { user: { userId: string, role: stri
   }
 
   const token = authHeader.split(" ")[1];
+
+  // Check if token is blacklisted
+  if (isTokenBlacklisted(token)) {
+    return res.status(401).json({ message: "Token has been revoked" });
+  }
 
   try {
     // Verify access token using token service (uses ACCESS_TOKEN_SECRET by default)

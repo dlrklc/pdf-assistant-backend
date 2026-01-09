@@ -3,7 +3,8 @@ import {
   validatePassword,
   getUserWithoutPassword,
 } from './user.service';
-import { generateToken, verifyToken, TokenPayload } from './token.service';
+import { generateToken, verifyToken, decodeToken, TokenPayload } from './token.service';
+import { isTokenBlacklisted, blacklistToken } from './token-blacklist.service';
 
 export interface LoginCredentials {
   email?: string;
@@ -116,6 +117,11 @@ export async function refresh(refreshToken: string): Promise<RefreshResult> {
     throw new ValidationError('Refresh token is required');
   }
 
+  // Check if refresh token is blacklisted
+  if (isTokenBlacklisted(refreshToken)) {
+    throw new AuthenticationError('Refresh token has been revoked');
+  }
+
   try {
     // Verify the refresh token using REFRESH_TOKEN_SECRET
     const refreshSecret = process.env.REFRESH_TOKEN_SECRET;
@@ -138,6 +144,12 @@ export async function refresh(refreshToken: string): Promise<RefreshResult> {
     // Generate new refresh token (token rotation for security)
     // The old refresh token is now invalid, preventing reuse if it was stolen
     const newRefreshToken = generateToken(tokenPayload, { expiresIn: '7d', useRefreshSecret: true });
+
+    // Blacklist the old refresh token
+    const decodedOldToken = decodeToken(refreshToken);
+    if (decodedOldToken && decodedOldToken.exp) {
+      blacklistToken(refreshToken, decodedOldToken.exp, payload.userId);
+    }
 
     return {
       accessToken: newAccessToken,

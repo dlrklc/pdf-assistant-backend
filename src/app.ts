@@ -12,10 +12,10 @@ app.use(cookieParser());
 // routes
 import chatRouter from './routes/chat';
 import uploadRouter from './routes/upload';
-import loginRouter from './routes/login';
+import authRouter from './routes/auth';
 
 app.use('/api/chat', chatRouter);
 app.use('/api/upload', uploadRouter);
-app.use('/api/login', loginRouter);
+app.use('/api/auth', authRouter);
 
 export default app;

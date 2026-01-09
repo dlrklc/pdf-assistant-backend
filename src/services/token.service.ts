@@ -97,3 +97,17 @@ export function verifyToken(token: string, secret?: string): TokenPayload {
   };
 }
 
+/**
+ * Decodes a JWT token without verification
+ * Only for reading token metadata, not for authentication
+ * @param token - The JWT token to decode
+ * @returns The decoded payload with expiration time
+ */
+export function decodeToken(token: string): jwt.JwtPayload | null {
+  try {
+    return jwt.decode(token, { complete: false }) as jwt.JwtPayload;
+  } catch (error) {
+    return null;
+  }
+}
+
