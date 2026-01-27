@@ -6,8 +6,25 @@ import { pineconeIndex } from './pinecone';
 import { v4 as uuidv4 } from 'uuid';
 import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import { PineconeRecord, RecordMetadata } from '@pinecone-database/pinecone';
+import type { Role, UserContext } from './user.service';
 
-export async function processAndEmbedDocument(filePath: string) {
+export interface EmbedDocumentOptions {
+  filePath: string;
+  userContext: UserContext;
+  //Optional document tags
+  tags?: string[];
+  //Optional explicit allow-lists
+  allowedRoles?: Role[];
+  allowedUsers?: string[];
+}
+
+export async function processAndEmbedDocument(options: EmbedDocumentOptions) {
+  const { filePath, userContext, tags = [], allowedRoles, allowedUsers } = options;
+
+  if (!userContext?.workspaceId || !userContext?.userId) {
+    throw new Error('Missing user context (fail closed)');
+  }
+
   let dataBuffer: Buffer;
   try {
     dataBuffer = fs.readFileSync(filePath);
@@ -51,6 +68,12 @@ export async function processAndEmbedDocument(filePath: string) {
         values: chunk.values,
         metadata: {
           text: chunk.text,
+          // RBAC metadata 
+          workspace_id: userContext.workspaceId,
+          owner_id: userContext.userId,
+          allowed_roles: allowedRoles ?? userContext.roles,
+          allowed_users: allowedUsers ?? [userContext.userId],
+          tags,
         },
     })
     );
