@@ -76,11 +76,12 @@ export async function login(
   }
 
   // Create JWT payload
+  const role = user.globalRole ?? 'Viewer';
   const payload: TokenPayload = {
     userId: user.userId,
     username: user.username,
     email: user.email,
-    role: user.role,
+    role,
   };
 
   // Generate tokens using token service
@@ -92,7 +93,12 @@ export async function login(
   const userResponse = getUserWithoutPassword(user);
 
   return {
-    user: userResponse,
+    user: {
+      userId: userResponse.userId,
+      username: userResponse.username,
+      email: userResponse.email,
+      role,
+    },
     accessToken,
     refreshToken,
   };
